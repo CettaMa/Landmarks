@@ -6,21 +6,27 @@ import math
 import joblib
 import time
 import matplotlib.pyplot as plt
-
+from playsound import playsound
+import os
 
 class FaceMeshDetector:
     def __init__(self, model_path):
         self.knn_model = joblib.load(model_path)
-        
+
         self.mp_face_mesh = mp.solutions.face_mesh
         self.face_mesh = self.mp_face_mesh.FaceMesh(
-            static_image_mode=False, max_num_faces=2, min_detection_confidence=0.5
+            static_image_mode=False, max_num_faces=1, min_detection_confidence=0.5
         )
         self.mp_drawing = mp.solutions.drawing_utils
         self.drawing_spec = self.mp_drawing.DrawingSpec(
             color=(128, 0, 128), thickness=2, circle_radius=1
         )
         self.inference_times = []
+        self.state_change_counter = 0
+        self.last_state_change_time = time.time()
+        self.current_state = None
+        self.alert_start_time = None  # New attribute for tracking alert time
+ 
 
     def eye_aspect_ratio(self, eye):
         N1 = distance.euclidean(eye[1][0], eye[1][1])
@@ -65,6 +71,9 @@ class FaceMeshDetector:
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         results = self.face_mesh.process(rgb_frame)
 
+        text_color = (0, 0, 0)  # Default black text color
+        current_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+
         img_h, img_w, _ = frame.shape
         if results.multi_face_landmarks:
             for face_landmarks in results.multi_face_landmarks:
@@ -107,7 +116,11 @@ class FaceMeshDetector:
                 face_3d = np.array(face_3d, dtype=np.float64)
                 angles = self.head_pose(face_2d, face_3d, img_w, img_h)
 
-                x, y, z = angles[0] * 360, angles[1] * 360, angles[2] * 360
+                x, y, z = (
+                    angles[0] * (180 / math.pi),
+                    angles[1] * (180 / math.pi),
+                    angles[2] * (180 / math.pi),
+                )
                 if y < -15:
                     head_text = "Menoleh Kanan"
                 elif y > 15:
@@ -119,12 +132,34 @@ class FaceMeshDetector:
                 else:
                     head_text = "Kedepan"
 
-                # Draw the line coordinates for x, y, and z
-                nose_tip = (int(face_2d[0][0]), int(face_2d[0][1]))
-                cv2.line(frame, nose_tip, (nose_tip[0] + int(x), nose_tip[1]), (255, 0, 0), 2)
-                cv2.line(frame, nose_tip, (nose_tip[0], nose_tip[1] - int(y)), (0, 255, 0), 2)
-                cv2.line(frame, nose_tip, (nose_tip[0], nose_tip[1] + int(z)), (0, 0, 255), 2)
+                input_data = np.array([ear, mar, avg_pupil_circularity, moe]).reshape(
+                    1, -1
+                )
+                state = self.knn_model.predict(input_data)[0]
+                current_time = time.time()
+                if self.current_state is None:
+                    self.current_state = state
+                    self.last_state_change_time = current_time
+                elif state != self.current_state:
+                    if state == 1 and (current_time - self.last_state_change_time > 2):
+                        self.state_change_counter += 1
+                        self.current_state = state
+                        self.last_state_change_time = current_time
+                        if self.state_change_counter >= 2:
+                            self.alert_start_time = current_time
+                    elif state == 0:
+                        self.current_state = 0
+                else :
+                    self.last_state_change_time = current_time
 
+                
+                if self.alert_start_time and (current_time - self.alert_start_time <= 5):
+                    text_color = (0, 0, 255)  # Red
+                    playsound(os.path.dirname(__file__) + "/assets/alerts.mp3")
+                elif self.alert_start_time and (current_time - self.alert_start_time > 5):
+                    self.alert_start_time = None  # Reset alert
+                    self.state_change_counter = 0  # Reset counter
+                    
                 for landmark in landmarks:
                     cv2.circle(
                         frame, (int(landmark[0]), int(landmark[1])), 1, (0, 255, 0), -1
@@ -136,7 +171,7 @@ class FaceMeshDetector:
                     (10, 30),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.7,
-                    (255, 255, 255),
+                    text_color,
                     2,
                 )
                 cv2.putText(
@@ -145,7 +180,7 @@ class FaceMeshDetector:
                     (10, 60),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.7,
-                    (255, 255, 255),
+                    text_color,
                     2,
                 )
                 cv2.putText(
@@ -154,7 +189,7 @@ class FaceMeshDetector:
                     (10, 90),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.7,
-                    (255, 255, 255),
+                    text_color,
                     2,
                 )
                 cv2.putText(
@@ -163,7 +198,7 @@ class FaceMeshDetector:
                     (10, 120),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.7,
-                    (255, 255, 255),
+                    text_color,
                     2,
                 )
                 cv2.putText(
@@ -172,7 +207,7 @@ class FaceMeshDetector:
                     (10, 150),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.7,
-                    (255, 255, 255),
+                    text_color,
                     2,
                 )
                 cv2.putText(
@@ -181,7 +216,7 @@ class FaceMeshDetector:
                     (10, 180),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.7,
-                    (255, 255, 255),
+                    text_color,
                     2,
                 )
                 cv2.putText(
@@ -190,21 +225,27 @@ class FaceMeshDetector:
                     (10, 210),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.7,
-                    (255, 255, 255),
+                    text_color,
                     2,
                 )
 
-                input_data = np.array([ear, mar, avg_pupil_circularity, moe]).reshape(
-                    1, -1
-                )
-                state = self.knn_model.predict(input_data)[0]
+                
                 cv2.putText(
                     frame,
                     f"State: {(state>0.5).astype(int)}",
                     (10, 240),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.7,
-                    (255, 255, 255),
+                    text_color,
+                    2,
+                )
+                cv2.putText(
+                    frame,
+                    f"State Changes: {self.state_change_counter}",
+                    (10, 270),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.7,
+                    text_color,
                     2,
                 )
 
@@ -215,9 +256,19 @@ class FaceMeshDetector:
                 (10, 30),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.7,
-                (255, 255, 255),
+                text_color,
                 2,
             )
+
+        cv2.putText(
+            frame,
+            f"Current Time: {current_time}",
+            (10, 300),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.7,
+            text_color,
+            2,
+        )
 
         end_time = time.time()
         inference_time = end_time - start_time
@@ -264,7 +315,7 @@ def main():
 
     cap.release()
     cv2.destroyAllWindows()
-    detector.plot_inference_times()
+    # detector.plot_inference_times()
 
 
 if __name__ == "__main__":
