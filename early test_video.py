@@ -158,7 +158,7 @@ class FaceMeshDetector:
                     text_color = (0, 0, 255)  # Red
                     if not self.alert_start_time or (current_time - self.alert_start_time <= 5):
                         if not hasattr(self, 'alert_thread') or not self.alert_thread.is_alive():
-                            self.alert_thread = threading.Thread(target=playsound, args=(os.path.dirname(__file__) + "/assets/Terompet.mp3",))
+                            self.alert_thread = threading.Thread(target=playsound, args=(os.path.dirname(__file__) + "/assets/alerts.mp3",))
                             self.alert_thread.start()
                 elif self.alert_start_time and (current_time - self.alert_start_time > 5):
                     self.alert_start_time = None  # Reset alert
