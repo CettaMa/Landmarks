@@ -7,8 +7,6 @@ import joblib
 import time
 import matplotlib.pyplot as plt
 from playsound import playsound
-import os
-import threading
 
 class FaceMeshDetector:
     def __init__(self, model_path):
@@ -27,6 +25,8 @@ class FaceMeshDetector:
         self.last_state_change_time = time.time()
         self.current_state = None
         self.alert_start_time = None  # New attribute for tracking alert time
+        self.fps_start_time = time.time()
+        self.fps_counter = 0
  
 
     def eye_aspect_ratio(self, eye):
@@ -146,7 +146,7 @@ class FaceMeshDetector:
                         self.state_change_counter += 1
                         self.current_state = state
                         self.last_state_change_time = current_time
-                        if self.state_change_counter >= 2:
+                        if self.state_change_counter >= 5:
                             self.alert_start_time = current_time
                     elif state == 0:
                         self.current_state = 0
@@ -156,10 +156,7 @@ class FaceMeshDetector:
                 
                 if self.alert_start_time and (current_time - self.alert_start_time <= 5):
                     text_color = (0, 0, 255)  # Red
-                    if not self.alert_start_time or (current_time - self.alert_start_time <= 5):
-                        if not hasattr(self, 'alert_thread') or not self.alert_thread.is_alive():
-                            self.alert_thread = threading.Thread(target=playsound, args=(os.path.dirname(__file__) + "/assets/alerts.mp3",))
-                            self.alert_thread.start()
+                    playsound("asset/alerts.mp3")
                 elif self.alert_start_time and (current_time - self.alert_start_time > 5):
                     self.alert_start_time = None  # Reset alert
                     self.state_change_counter = 0  # Reset counter
@@ -268,6 +265,20 @@ class FaceMeshDetector:
             frame,
             f"Current Time: {current_time}",
             (10, 300),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.7,
+            text_color,
+            2,
+        )
+
+        self.fps_counter += 1
+        fps_end_time = time.time()
+        fps = self.fps_counter / (fps_end_time - self.fps_start_time)
+
+        cv2.putText(
+            frame,
+            f"FPS: {fps:.2f}",
+            (10, 330),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.7,
             text_color,
