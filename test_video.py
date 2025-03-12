@@ -293,7 +293,7 @@ class FaceMeshDetector:
 
 def main():
     model_path = (
-        r"C:\Users\cetta\Documents\Capstone design\kode\Landmarks\model\xgb_model.pkl"
+        r"Landmarks/model/xgb_model.pkl"
     )
     detector = FaceMeshDetector(model_path)
 
