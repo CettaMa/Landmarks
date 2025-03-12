@@ -291,19 +291,6 @@ class FaceMeshDetector:
 
         return frame
 
-    def plot_inference_times(self):
-        average_inference_time = sum(self.inference_times) / len(self.inference_times)
-        plt.figure(figsize=(10, 5))
-        plt.plot(self.inference_times, label="Inference Time")
-        plt.xlabel("Frame Index")
-        plt.ylabel("Inference Time (seconds)")
-        plt.title(f"Inference Time per Frame {average_inference_time:.4f} seconds")
-        plt.legend()
-        plt.grid(True)
-        plt.show()
-        print(f"Average Inference Time: {average_inference_time:.4f} seconds")
-
-
 def main():
     model_path = (
         r"C:\Users\cetta\Documents\Capstone design\kode\Landmarks\model\xgb_model.pkl"
@@ -330,8 +317,6 @@ def main():
 
     cap.release()
     cv2.destroyAllWindows()
-    # detector.plot_inference_times()
-
 
 if __name__ == "__main__":
     main()
