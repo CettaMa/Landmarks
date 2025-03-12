@@ -7,6 +7,7 @@ import joblib
 import time
 import matplotlib.pyplot as plt
 from playsound import playsound
+import threading
 
 class FaceMeshDetector:
     def __init__(self, model_path):
@@ -27,6 +28,10 @@ class FaceMeshDetector:
         self.alert_start_time = None  # New attribute for tracking alert time
         self.fps_start_time = time.time()
         self.fps_counter = 0
+        self.right_eye_indices = [[33, 133], [160, 144], [159, 145], [158, 153]]
+        self.left_eye_indices = [[263, 362], [387, 373], [386, 374], [385, 380]]
+        self.mouth_indices = [[61, 291], [39, 181], [0, 17], [269, 405]]
+        self.head_pose_indices = [1, 33, 263, 61, 291, 199]
  
 
     def eye_aspect_ratio(self, eye):
@@ -82,14 +87,9 @@ class FaceMeshDetector:
                 landmarks[:, 0] *= frame.shape[1]
                 landmarks[:, 1] *= frame.shape[0]
 
-                right_eye_indices = [[33, 133], [160, 144], [159, 145], [158, 153]]
-                left_eye_indices = [[263, 362], [387, 373], [386, 374], [385, 380]]
-                mouth_indices = [[61, 291], [39, 181], [0, 17], [269, 405]]
-                head_pose_indices = [1, 33, 263, 61, 291, 199]
-
-                right_eye = landmarks[right_eye_indices]
-                left_eye = landmarks[left_eye_indices]
-                mouth = landmarks[mouth_indices]
+                right_eye = landmarks[self.right_eye_indices]
+                left_eye = landmarks[self.left_eye_indices]
+                mouth = landmarks[self.mouth_indices]
 
                 right_ear = self.eye_aspect_ratio(right_eye)
                 left_ear = self.eye_aspect_ratio(left_eye)
@@ -108,7 +108,7 @@ class FaceMeshDetector:
                 face_3d = []
 
                 for idx, lm in enumerate(face_landmarks.landmark):
-                    if idx in head_pose_indices:
+                    if idx in self.head_pose_indices:
                         x, y = int(lm.x * img_w), int(lm.y * img_h)
                         face_2d.append([x, y])
                         face_3d.append([x, y, lm.z])
@@ -146,7 +146,7 @@ class FaceMeshDetector:
                         self.state_change_counter += 1
                         self.current_state = state
                         self.last_state_change_time = current_time
-                        if self.state_change_counter >= 5:
+                        if self.state_change_counter >= 2:
                             self.alert_start_time = current_time
                     elif state == 0:
                         self.current_state = 0
@@ -156,7 +156,8 @@ class FaceMeshDetector:
                 
                 if self.alert_start_time and (current_time - self.alert_start_time <= 5):
                     text_color = (0, 0, 255)  # Red
-                    playsound("asset/alerts.mp3")
+                    if not threading.active_count() > 1:
+                        threading.Thread(target=playsound, args=("assets/alerts.mp3", True), daemon=True).start()
                 elif self.alert_start_time and (current_time - self.alert_start_time > 5):
                     self.alert_start_time = None  # Reset alert
                     self.state_change_counter = 0  # Reset counter
@@ -230,7 +231,6 @@ class FaceMeshDetector:
                     2,
                 )
 
-                
                 cv2.putText(
                     frame,
                     f"State: {(state>0.5).astype(int)}",
