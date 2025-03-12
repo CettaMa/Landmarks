@@ -60,17 +60,17 @@ class FaceMeshDetector:
 
     def eye_aspect_ratio(self, eye):
         # Simple calculation using precomputed eye landmarks
-        N1 = distance.euclidean(eye[1], eye[1])
-        N2 = distance.euclidean(eye[2], eye[2])
-        N3 = distance.euclidean(eye[3], eye[3])
-        D = distance.euclidean(eye[0], eye[0])
+        N1 = distance.euclidean(eye[1][0], eye[1][1])
+        N2 = distance.euclidean(eye[2][0], eye[2][1])
+        N3 = distance.euclidean(eye[3][0], eye[3][1])
+        D = distance.euclidean(eye[0][0], eye[0][1])
         return (N1 + N2 + N3) / (3 * D) if D != 0 else 0
 
     def mouth_aspect_ratio(self, mouth):
-        N1 = distance.euclidean(mouth[1], mouth[1])
-        N2 = distance.euclidean(mouth[2], mouth[2])
-        N3 = distance.euclidean(mouth[3], mouth[3])
-        D = distance.euclidean(mouth[0], mouth[0])
+        N1 = distance.euclidean(mouth[1][0], mouth[1][1])
+        N2 = distance.euclidean(mouth[2][0], mouth[2][1])
+        N3 = distance.euclidean(mouth[3][0], mouth[3][1])
+        D = distance.euclidean(mouth[0][0], mouth[0][1])
         return (N1 + N2 + N3) / (3 * D) if D != 0 else 0
 
     def pupil_circularity(self, eye):
