@@ -293,7 +293,7 @@ class FaceMeshDetector:
 
 def main():
     model_path = (
-        r"Landmarks/model/xgb_model.pkl"
+        r"model/xgb_model.pkl"
     )
     detector = FaceMeshDetector(model_path)
 
