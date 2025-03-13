@@ -74,11 +74,11 @@ class FaceMeshDetector:
         return (N1 + N2 + N3) / (3 * D) if D != 0 else 0
 
     def pupil_circularity(self, eye):
-        perimeter = (distance.euclidean(eye[0], eye[1]) +
-                     distance.euclidean(eye[1], eye[2]) +
-                     distance.euclidean(eye[2], eye[3]) +
-                     distance.euclidean(eye[3], eye[0]))
-        diameter = distance.euclidean(eye[1], eye[3])
+        perimeter = (distance.euclidean(eye[0][0], eye[1][0]) +
+                     distance.euclidean(eye[1][0], eye[2][0]) +
+                     distance.euclidean(eye[2][0], eye[3][0]) +
+                     distance.euclidean(eye[3][0], eye[0][1]))
+        diameter = distance.euclidean(eye[1][0], eye[3][1])
         area = math.pi * ((diameter * 0.5) ** 2)
         return (4 * math.pi * area) / (perimeter**2) if perimeter != 0 else 0
 
@@ -126,9 +126,9 @@ class FaceMeshDetector:
                 landmarks = np.array([[lm.x * img_w, lm.y * img_h] for lm in face_landmarks.landmark])
 
                 # Extract eye and mouth landmarks using pre-defined indices.
-                right_eye = landmarks[self.right_eye_indices.flatten()].reshape(-1, 2)
-                left_eye = landmarks[self.left_eye_indices.flatten()].reshape(-1, 2)
-                mouth = landmarks[self.mouth_indices.flatten()].reshape(-1, 2)
+                right_eye = landmarks[self.right_eye_indices]
+                left_eye = landmarks[self.left_eye_indices]
+                mouth = landmarks[self.mouth_indices]
 
                 # Compute metrics.
                 right_ear = self.eye_aspect_ratio(right_eye)
