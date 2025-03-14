@@ -42,7 +42,7 @@ class FaceMeshDetector:
         self.knn_model = joblib.load(model_path)
         self.mp_face_mesh = mp.solutions.face_mesh
         self.face_mesh = self.mp_face_mesh.FaceMesh(
-            static_image_mode=False, max_num_faces=1, min_detection_confidence=0.5
+            static_image_mode=False, max_num_faces=1, min_detection_confidence=0.5, refine_landmarks=True
         )
         self.inference_times = []
         self.state_change_counter = 0

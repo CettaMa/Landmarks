@@ -8,14 +8,17 @@ import time
 import matplotlib.pyplot as plt
 from playsound import playsound
 import threading
+import xgboost as xgb
 
 class FaceMeshDetector:
     def __init__(self, model_path):
         self.knn_model = joblib.load(model_path)
+        if isinstance(self.knn_model, xgb.Booster):
+            self.knn_model.set_param({'device': 'cuda'})
 
         self.mp_face_mesh = mp.solutions.face_mesh
         self.face_mesh = self.mp_face_mesh.FaceMesh(
-            static_image_mode=False, max_num_faces=1, min_detection_confidence=0.5
+            static_image_mode=True, max_num_faces=1, min_detection_confidence=0.5,refine_landmarks=True
         )
         self.mp_drawing = mp.solutions.drawing_utils
         self.drawing_spec = self.mp_drawing.DrawingSpec(
