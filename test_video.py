@@ -8,17 +8,14 @@ import time
 import matplotlib.pyplot as plt
 from playsound import playsound
 import threading
-import xgboost as xgb
 
 class FaceMeshDetector:
     def __init__(self, model_path):
         self.knn_model = joblib.load(model_path)
-        if isinstance(self.knn_model, xgb.Booster):
-            self.knn_model.set_param({'device': 'cuda'})
 
         self.mp_face_mesh = mp.solutions.face_mesh
         self.face_mesh = self.mp_face_mesh.FaceMesh(
-            static_image_mode=True, max_num_faces=1, min_detection_confidence=0.5,refine_landmarks=True
+            static_image_mode=False, max_num_faces=1, min_detection_confidence=0.5
         )
         self.mp_drawing = mp.solutions.drawing_utils
         self.drawing_spec = self.mp_drawing.DrawingSpec(
@@ -31,10 +28,6 @@ class FaceMeshDetector:
         self.alert_start_time = None  # New attribute for tracking alert time
         self.fps_start_time = time.time()
         self.fps_counter = 0
-        self.right_eye_indices = [[33, 133], [160, 144], [159, 145], [158, 153]]
-        self.left_eye_indices = [[263, 362], [387, 373], [386, 374], [385, 380]]
-        self.mouth_indices = [[61, 291], [39, 181], [0, 17], [269, 405]]
-        self.head_pose_indices = [1, 33, 263, 61, 291, 199]
  
 
     def eye_aspect_ratio(self, eye):
@@ -90,9 +83,14 @@ class FaceMeshDetector:
                 landmarks[:, 0] *= frame.shape[1]
                 landmarks[:, 1] *= frame.shape[0]
 
-                right_eye = landmarks[self.right_eye_indices]
-                left_eye = landmarks[self.left_eye_indices]
-                mouth = landmarks[self.mouth_indices]
+                right_eye_indices = [[33, 133], [160, 144], [159, 145], [158, 153]]
+                left_eye_indices = [[263, 362], [387, 373], [386, 374], [385, 380]]
+                mouth_indices = [[61, 291], [39, 181], [0, 17], [269, 405]]
+                head_pose_indices = [1, 33, 263, 61, 291, 199]
+
+                right_eye = landmarks[right_eye_indices]
+                left_eye = landmarks[left_eye_indices]
+                mouth = landmarks[mouth_indices]
 
                 right_ear = self.eye_aspect_ratio(right_eye)
                 left_ear = self.eye_aspect_ratio(left_eye)
@@ -111,7 +109,7 @@ class FaceMeshDetector:
                 face_3d = []
 
                 for idx, lm in enumerate(face_landmarks.landmark):
-                    if idx in self.head_pose_indices:
+                    if idx in head_pose_indices:
                         x, y = int(lm.x * img_w), int(lm.y * img_h)
                         face_2d.append([x, y])
                         face_3d.append([x, y, lm.z])
@@ -234,6 +232,7 @@ class FaceMeshDetector:
                     2,
                 )
 
+                
                 cv2.putText(
                     frame,
                     f"State: {(state>0.5).astype(int)}",
