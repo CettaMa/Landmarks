@@ -13,8 +13,10 @@ from picamera2 import Picamera2, Preview
 import os
 
 # Configure for Raspberry Pi performance
-os.environ["LIBOMP_NUM_HARDWARE_THREADS"] = "4"  # Limit CPU threads
-os.environ["OPENBLAS_NUM_THREADS"] = "1"
+# Add these at the top of your file
+os.environ["MP_NUM_THREADS"] = "4"          # Use all 4 CPU cores
+os.environ["OPENBLAS_NUM_THREADS"] = "1"    # Optimize BLAS threading
+os.environ["OMP_NUM_THREADS"] = "1"
 
 # Constants
 OPTIMIZED_RESOLUTION = (640, 480)  # Reduced resolution
@@ -31,7 +33,9 @@ class FaceMeshDetector:
     def __init__(self, model_path):
         # Load model with memory mapping for efficiency
         self.knn_model = joblib.load(model_path, mmap_mode='r')
-        
+        if hasattr(self.knn_model, 'n_jobs'):
+            self.knn_model.n_jobs = 1  # Limit CPU threads for model
+            
         # Optimized Face Mesh configuration
         self.face_mesh = mp.solutions.face_mesh.FaceMesh(
             static_image_mode=False,
@@ -188,22 +192,19 @@ class PiCameraStream:
     def __init__(self):
         self.picam2 = Picamera2()
         config = self.picam2.create_video_configuration(
-            main={"size": OPTIMIZED_RESOLUTION, "format": "YUV420"},
-            buffer_count=4  # Reduced buffer size
+            main={
+                "size": (640, 480),  # Lower resolution
+                "format": "YUV420"   # Hardware-accelerated format
+            },
+            controls={
+                "FrameRate": 20,      # Reduced frame rate
+                "AwbMode": "Auto",    # Auto white balance
+                "ExposureTime": 10000  # Fixed exposure
+            }
         )
         self.picam2.configure(config)
+        self.picam2.start_preview(Preview.NULL)  # Disable preview overhead
         self.picam2.start()
-        
-        # Warmup camera
-        time.sleep(2)
-
-    def get_frame(self):
-        """Optimized frame capture with zero-copy conversion"""
-        yuv420 = self.picam2.capture_array("main")
-        return cv2.cvtColor(yuv420, cv2.COLOR_YUV420p2BGR)
-
-    def release(self):
-        self.picam2.stop()
 
 def main():
     detector = FaceMeshDetector("model/xgb_model.pkl")
