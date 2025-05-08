@@ -35,7 +35,7 @@ class FaceMeshDetector:
         self.knn_model = joblib.load(model_path, mmap_mode='r')
         if hasattr(self.knn_model, 'n_jobs'):
             self.knn_model.n_jobs = 1  # Limit CPU threads for model
-            
+
         # Optimized Face Mesh configuration
         self.face_mesh = mp.solutions.face_mesh.FaceMesh(
             static_image_mode=False,
@@ -48,12 +48,11 @@ class FaceMeshDetector:
         # Hardware-accelerated Object Detector
         base_options = python.BaseOptions(
             model_asset_path='model/objek.tflite',
-            delegate=python.BaseDelegate.GPU  # Use GPU delegate
         )
         options = vision.ObjectDetectorOptions(
             base_options=base_options,
             score_threshold=0.5,
-            category_allowlist=["phone", "bottle"]  # Filter relevant classes
+            running_mode=vision.RunningMode.LIVE_STREAM,
         )
         self.object_detector = vision.ObjectDetector.create_from_options(options)
 
