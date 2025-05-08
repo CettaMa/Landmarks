@@ -1,4 +1,9 @@
 /output
 /Video
 /.venv
-tempCodeRunnerFile.py
+/__pycache__/
+/.pytest_cache__/
+/.ropeproject
+/.vscode
+tempCodeRunnerFile.python
+
