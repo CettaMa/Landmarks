@@ -205,7 +205,7 @@ class FaceMeshDetector:
                 face_3d = np.array(face_3d, dtype=np.float64)
                 angles = self.head_pose(face_2d, face_3d, img_w, img_h)
 
-                x, y, z = (
+                x, y, _ = (
                     angles[0] * (180 / math.pi),
                     angles[1] * (180 / math.pi),
                     angles[2] * (180 / math.pi),
