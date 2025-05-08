@@ -2,8 +2,8 @@
 /Video
 /.venv
 /__pycache__/
-/.pytest_cache__/
+/.pytest_cache/
 /.ropeproject
 /.vscode
 tempCodeRunnerFile.python
-
+tempCodeRunnerFile.py
