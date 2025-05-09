@@ -6,6 +6,7 @@ import math
 import joblib
 import time
 import threading
+import pygame
 from playsound import playsound
 from picamera2 import Picamera2
 
@@ -44,6 +45,8 @@ class CameraStream:
 
 class FaceMeshDetector:
     def __init__(self, model_path):
+        pygame.mixer.init()
+        self.alert_sound = pygame.mixer.Sound("assets/farrel.mp3")  # Load sound file
         self.knn_model = joblib.load(model_path)
         self.mp_face_mesh = mp.solutions.face_mesh
         self.face_mesh = self.mp_face_mesh.FaceMesh(
@@ -171,6 +174,7 @@ class FaceMeshDetector:
                         # Trigger alert after multiple drowsy detections
                         if self.state_change_counter >= 2:
                             self.alert_start_time = current_time
+                            self.alert_sound.play()
                     # Transition to alert state (0)
                     elif state == 0:
                         self.current_state = 0
