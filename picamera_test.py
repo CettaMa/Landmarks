@@ -28,7 +28,6 @@ class CameraStream:
             frame = self.picam2.capture_array()
             # Convert XRGB to RGB (remove alpha channel)
             frame = frame[:, :, 1:]
-            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
             with self.lock:
                 self.frame = frame
 
@@ -111,7 +110,7 @@ class FaceMeshDetector:
         current_time = time.time()
 
         # Convert RGB to BGR for OpenCV drawing
-        draw_frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+        draw_frame = frame
         results = self.face_mesh.process(frame)
         text_color = (0, 0, 0)  # BGR color for black
 
