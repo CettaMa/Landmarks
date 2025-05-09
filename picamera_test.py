@@ -56,7 +56,7 @@ class FaceMeshDetector:
         self.STATE_CHANGE_THRESHOLD = 2  # seconds
         self.state_change_counter = 0
         self.last_state_change_time = time.time()
-        self.current_state = None
+        self.current_state = 0
         self.alert_start_time = None
         self.fps_start_time = time.time()
         self.fps_counter = 0
@@ -182,6 +182,7 @@ class FaceMeshDetector:
                 if self.alert_start_time and (current_time - self.alert_start_time <= 5):
                     cv2.rectangle(draw_frame, (0, 0), (img_w, 340), (0, 0, 255), -1)  # Red background
                     text_color = (255, 255, 255)  # White text
+                    self.state_change_counter = 0
                     if threading.active_count() <= 1:
                         threading.Thread(target=playsound,
                                          args=("assets/farrel.mp3", True),
