@@ -53,6 +53,7 @@ class FaceMeshDetector:
             refine_landmarks=False  # Disabled refined landmarks
         )
         self.inference_times = []
+        self.STATE_CHANGE_THRESHOLD = 2  # seconds
         self.state_change_counter = 0
         self.last_state_change_time = time.time()
         self.current_state = None
@@ -161,6 +162,21 @@ class FaceMeshDetector:
                 state = self.knn_model.predict(input_data)[0]
 
                 # State management logic remains unchanged
+                if self.current_state is None or state != self.current_state:
+                    # Transition to drowsy state (1)
+                    if state == 1 and (current_time - self.last_state_change_time > self.STATE_CHANGE_THRESHOLD):
+                        self.state_change_counter += 1
+                        self.current_state = state
+                        self.last_state_change_time = current_time
+                        # Trigger alert after multiple drowsy detections
+                        if self.state_change_counter >= 2:
+                            self.alert_start_time = current_time
+                    # Transition to alert state (0)
+                    elif state == 0:
+                        self.current_state = 0
+                else:
+                    # Update last state change time
+                    self.last_state_change_time = current_time
 
                 # Alert visualization
                 if self.alert_start_time and (current_time - self.alert_start_time <= 5):
