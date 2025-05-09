@@ -14,7 +14,7 @@ class CameraStream:
     def __init__(self, width=640, height=480):
         self.picam2 = Picamera2()
         config = self.picam2.create_video_configuration(
-            main={"size": (width, height), "format": "YUV420"}
+            main={"size": (width, height), "format": "XRGB8888"}
         )
         self.picam2.configure(config)
         self.frame = None
@@ -27,9 +27,9 @@ class CameraStream:
         while not self.stopped:
             frame = self.picam2.capture_array()
             # Convert XRGB to RGB (remove alpha channel)
-            grey = frame[:480, :640]
+            frame = frame[:, :, 1:]
             with self.lock:
-                self.frame = grey
+                self.frame = frame
 
     def read(self):
         with self.lock:
