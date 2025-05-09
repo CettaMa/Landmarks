@@ -28,6 +28,7 @@ class CameraStream:
             frame = self.picam2.capture_array()
             # Convert XRGB to RGB (remove alpha channel)
             frame = frame[:, :, 1:]
+            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
             with self.lock:
                 self.frame = frame
 
@@ -178,7 +179,7 @@ class FaceMeshDetector:
                 if self.alert_start_time:
                     if current_time - self.alert_start_time <= 5:
                         text_color = (0, 0, 255)  # Red in BGR
-                        if threading.active_count() == 1:
+                        if threading.active_count() <= 1:
                             threading.Thread(target=playsound,
                                              args=("assets/farrel.mp3", True),
                                              daemon=True).start()
