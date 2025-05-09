@@ -1,3 +1,5 @@
-if self.alert_start_time and (current_time - self.alert_start_time <= 5):
-                    text_color = (0, 0, 255)  # Red
-                    threading.Thread(target=playsound, args=("assets/alerts.mp3",), daemon=True).start()
+    if 'XGBoost' in results:
+        xgboost_model = models['XGBoost']
+        xgboost_path = os.path.join("exported_models", "xgboost_model.pkl")
+        joblib.dump(xgboost_model, xgboost_path, compress=3)
+        print(f"XGBoost model exported to {xgboost_path}")

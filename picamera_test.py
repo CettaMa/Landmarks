@@ -14,7 +14,7 @@ class CameraStream:
     def __init__(self, width=640, height=480):
         self.picam2 = Picamera2()
         config = self.picam2.create_video_configuration(
-            main={"size": (width, height), "format": "XRGB8888"}
+            main={"size": (width, height), "format": "YUV420"}
         )
         self.picam2.configure(config)
         self.frame = None
@@ -27,9 +27,9 @@ class CameraStream:
         while not self.stopped:
             frame = self.picam2.capture_array()
             # Convert XRGB to RGB (remove alpha channel)
-            frame = frame[:, :, 1:]
+            grey = frame[:480, :640]
             with self.lock:
-                self.frame = frame
+                self.frame = grey
 
     def read(self):
         with self.lock:
@@ -180,7 +180,7 @@ class FaceMeshDetector:
                         text_color = (0, 0, 255)  # Red in BGR
                         if threading.active_count() == 1:
                             threading.Thread(target=playsound,
-                                             args=("assets/alerts.mp3", True),
+                                             args=("assets/farrel.mp3", True),
                                              daemon=True).start()
                     else:
                         self.alert_start_time = None

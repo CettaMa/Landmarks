@@ -247,8 +247,10 @@ def process_video(video_path):
                         key = cv2.waitKey(0) & 0xFF
                         if key == ord('1'):
                             state = 1
-                        elif key == ord('2'):
+                        elif key == ord('0'):
                             state = 0
+                        elif key == ord('2'):
+                            state = 2
                         else:
                             state = -1  # Undefined state
 
