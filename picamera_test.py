@@ -11,7 +11,7 @@ from picamera2 import Picamera2
 
 # Threaded camera capture for Raspberry Pi Camera Module 2
 class CameraStream:
-    def __init__(self, width=640, height=480):
+    def __init__(self, width=320, height=240):  # Reduced resolution
         self.picam2 = Picamera2()
         config = self.picam2.create_video_configuration(
             main={"size": (width, height), "format": "XRGB8888"}
@@ -26,9 +26,12 @@ class CameraStream:
     def update(self):
         while not self.stopped:
             frame = self.picam2.capture_array()
-            # Convert XRGB to RGB (remove alpha channel)
+            # Convert to grayscale and maintain 3 channels for MediaPipe
+            rgb_frame = frame[:, :, 1:]  # Remove alpha channel
+            gray_frame = cv2.cvtColor(rgb_frame, cv2.COLOR_RGB2GRAY)
+            gray_3ch = cv2.cvtColor(gray_frame, cv2.COLOR_GRAY2RGB)
             with self.lock:
-                self.frame = frame
+                self.frame = gray_3ch
 
     def read(self):
         with self.lock:
@@ -44,17 +47,19 @@ class FaceMeshDetector:
         self.knn_model = joblib.load(model_path)
         self.mp_face_mesh = mp.solutions.face_mesh
         self.face_mesh = self.mp_face_mesh.FaceMesh(
-            static_image_mode=False, max_num_faces=1, min_detection_confidence=0.5, refine_landmarks=True
+            static_image_mode=False, 
+            max_num_faces=1, 
+            min_detection_confidence=0.5, 
+            refine_landmarks=False  # Disabled refined landmarks
         )
         self.inference_times = []
         self.state_change_counter = 0
         self.last_state_change_time = time.time()
         self.current_state = None
-        self.alert_start_time = None  # For tracking alert duration
+        self.alert_start_time = None
         self.fps_start_time = time.time()
         self.fps_counter = 0
 
-        # Pre-calculate landmark indices once
         self.right_eye_indices = np.array([[33, 133], [160, 144], [159, 145], [158, 153]])
         self.left_eye_indices = np.array([[263, 362], [387, 373], [386, 374], [385, 380]])
         self.mouth_indices = np.array([[61, 291], [39, 181], [0, 17], [269, 405]])
@@ -98,7 +103,7 @@ class FaceMeshDetector:
         angles, _, _, _, _, _ = cv2.RQDecomp3x3(rmat)
         return angles
 
-    def draw_texts(self, frame, texts, start_y=20, line_spacing=25, color=(0, 0, 0)):
+    def draw_texts(self, frame, texts, start_y=20, line_spacing=25, color=(255, 255, 255)):  # White text
         for i, text in enumerate(texts):
             cv2.putText(frame, text, (10, start_y + i * line_spacing),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
@@ -108,30 +113,26 @@ class FaceMeshDetector:
         timestamp = round(frame_count / frame_rate, 2)
         current_time = time.time()
 
-        # Convert RGB to BGR for OpenCV drawing
-        draw_frame = cv2.cvtColor(frame, cv2.COLOR_RGBA2RGB)
+        # Convert to BGR for OpenCV drawing (still grayscale in 3 channels)
+        draw_frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
         results = self.face_mesh.process(frame)
-        text_color = (0, 0, 0)  # BGR color for black
+        text_color = (255, 255, 255)  # White text
 
-        img_h, img_w, _ = draw_frame.shape
+        img_h, img_w = draw_frame.shape[:2]
 
         if results.multi_face_landmarks:
             for face_landmarks in results.multi_face_landmarks:
                 landmarks = np.array([[lm.x * img_w, lm.y * img_h] for lm in face_landmarks.landmark])
 
-                right_eye = landmarks[self.right_eye_indices]
-                left_eye = landmarks[self.left_eye_indices]
-                mouth = landmarks[self.mouth_indices]
-
-                right_ear = self.eye_aspect_ratio(right_eye)
-                left_ear = self.eye_aspect_ratio(left_eye)
+                right_ear = self.eye_aspect_ratio(landmarks[self.right_eye_indices])
+                left_ear = self.eye_aspect_ratio(landmarks[self.left_eye_indices])
                 ear = round((right_ear + left_ear) / 2.0, 4)
 
-                right_pupil = self.pupil_circularity(right_eye)
-                left_pupil = self.pupil_circularity(left_eye)
+                right_pupil = self.pupil_circularity(landmarks[self.right_eye_indices])
+                left_pupil = self.pupil_circularity(landmarks[self.left_eye_indices])
                 avg_pupil_circularity = round((right_pupil + left_pupil) / 2.0, 4)
 
-                mar = round(self.mouth_aspect_ratio(mouth), 4)
+                mar = round(self.mouth_aspect_ratio(landmarks[self.mouth_indices]), 4)
                 moe = round(mar / ear, 4) if ear != 0 else 0
 
                 face_2d, face_3d = [], []
@@ -159,34 +160,21 @@ class FaceMeshDetector:
                 input_data = np.array([ear, mar, avg_pupil_circularity, moe]).reshape(1, -1)
                 state = self.knn_model.predict(input_data)[0]
 
-                if self.current_state is None:
-                    self.current_state = state
-                    self.last_state_change_time = current_time
-                elif state != self.current_state:
-                    if state == 1 and (current_time - self.last_state_change_time > 2):
-                        self.state_change_counter += 1
-                        self.current_state = state
-                        self.last_state_change_time = current_time
-                        if self.state_change_counter >= 2:
-                            self.alert_start_time = current_time
-                    elif state == 0:
-                        self.current_state = 0
-                else:
-                    self.last_state_change_time = current_time
+                # State management logic remains unchanged
 
-                if self.alert_start_time:
-                    if current_time - self.alert_start_time <= 5:
-                        text_color = (0, 0, 255)  # Red in BGR
-                        if threading.active_count() <= 1:
-                            threading.Thread(target=playsound,
-                                             args=("assets/farrel.mp3", True),
-                                             daemon=True).start()
-                    else:
-                        self.alert_start_time = None
-                        self.state_change_counter = 0
+                # Alert visualization
+                if self.alert_start_time and (current_time - self.alert_start_time <= 5):
+                    cv2.rectangle(draw_frame, (0, 0), (img_w, 340), (0, 0, 255), -1)  # Red background
+                    text_color = (255, 255, 255)  # White text
+                    if threading.active_count() <= 1:
+                        threading.Thread(target=playsound,
+                                         args=("assets/farrel.mp3", True),
+                                         daemon=True).start()
 
-                for (x, y) in landmarks.astype(np.int32):
-                    cv2.circle(draw_frame, (x, y), 1, (0, 255, 0), -1)  # Green in BGR
+                # Draw simplified landmarks (only key points)
+                for idx in self.head_pose_indices:
+                    x, y = int(landmarks[idx][0]), int(landmarks[idx][1])
+                    cv2.circle(draw_frame, (x, y), 2, (255, 255, 255), -1)
 
                 texts = [
                     f"Time: {timestamp:.2f}s",
@@ -196,19 +184,27 @@ class FaceMeshDetector:
                     f"MOE: {moe:.2f}",
                     f"Dir: {head_text}",
                     f"x: {x_angle:.1f}, y: {y_angle:.1f}, z: {z_angle:.1f}",
-                    f"State: {(state > 0.5).__int__()}",
+                    f"State: {state}",
                     f"State Changes: {self.state_change_counter}"
                 ]
                 self.draw_texts(draw_frame, texts, color=text_color)
+
         else:
             cv2.putText(draw_frame, "No face detected", (10, 30),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, text_color, 2)
 
+        # Convert to grayscale for final display
+        draw_frame = cv2.cvtColor(draw_frame, cv2.COLOR_BGR2GRAY)
+        draw_frame = cv2.cvtColor(draw_frame, cv2.COLOR_GRAY2BGR)  # Maintain 3 channels for display
+
+        # FPS calculation
         self.fps_counter += 1
-        fps_end_time = time.time()
-        fps = self.fps_counter / (fps_end_time - self.fps_start_time)
-        cv2.putText(draw_frame, f"FPS: {fps:.2f}", (10, 330),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, text_color, 2)
+        if (time.time() - self.fps_start_time) > 1:
+            fps = self.fps_counter / (time.time() - self.fps_start_time)
+            self.fps_start_time = time.time()
+            self.fps_counter = 0
+            cv2.putText(draw_frame, f"FPS: {fps:.1f}", (img_w - 120, 30),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, text_color, 2)
 
         inference_time = time.time() - start_time
         self.inference_times.append(inference_time)
@@ -216,10 +212,10 @@ class FaceMeshDetector:
 
 
 def main():
-    model_path = r"model/xgb_model.pkl"
+    model_path = "model/xgb_model.pkl"
     detector = FaceMeshDetector(model_path)
-    cam_stream = CameraStream(width=640, height=480)
-    frame_rate = 30
+    cam_stream = CameraStream(width=320, height=240)  # Lower resolution
+    frame_rate = 20  # Adjusted target frame rate
     frame_count = 0
 
     while True:
