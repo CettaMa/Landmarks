@@ -163,7 +163,7 @@ OUTPUT_ROOT = 'output'
 
 # Initialize MediaPipe FaceMesh
 mp_face_mesh = mp.solutions.face_mesh
-face_mesh = mp_face_mesh.FaceMesh(static_image_mode=False, max_num_faces=1, min_detection_confidence=0.5)
+face_mesh = mp_face_mesh.FaceMesh(static_image_mode=True, max_num_faces=1, min_detection_confidence=0.5,refine_landmarks=True)
 
 def calculate_aspect_ratio(points):
     numerator = sum(distance.euclidean(pair[0], pair[1]) for pair in points[1:4])
@@ -244,15 +244,16 @@ def process_video(video_path):
                         # Determine state based on user input
 
                         cv2.imshow('Frame', frame)
+                        # state = 0
                         key = cv2.waitKey(0) & 0xFF
                         if key == ord('1'):
                             state = 1
-                        elif key == ord('0'):
-                            state = 0
                         elif key == ord('2'):
-                            state = 2
-                        else:
-                            state = -1  # Undefined state
+                            state = 0
+                        # elif key == ord('2'):
+                        #     state = 2
+                        # else:
+                        #     state = -1  # Undefined state
 
                         # Draw landmarks
                         for landmark in landmarks:

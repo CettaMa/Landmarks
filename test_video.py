@@ -364,11 +364,11 @@ class FaceMeshDetector:
 
 def main():
     """Main function to run the driver monitoring system."""
-    model_path = r"model/xgb_model.pkl"
+    model_path = r"saved_models/XGBoost.pkl"
     detector = FaceMeshDetector(model_path)
 
     # Open webcam
-    cap = cv2.VideoCapture(2)
+    cap = cv2.VideoCapture(0)
     frame_rate = cap.get(cv2.CAP_PROP_FPS)
     frame_count = 0
 

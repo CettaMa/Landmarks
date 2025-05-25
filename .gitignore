@@ -7,3 +7,6 @@
 /.vscode
 tempCodeRunnerFile.python
 tempCodeRunnerFile.py
+/saved_models
+/confusion_matrices
+model_comparison.csv
