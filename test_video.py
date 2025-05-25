@@ -9,6 +9,7 @@ from playsound import playsound
 import threading
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
+import pygame
 
 # Constants for landmark indices
 RIGHT_EYE_INDICES = [[33, 133], [160, 144], [159, 145], [158, 153]]
@@ -30,6 +31,7 @@ LANDMARK_COLOR = (0, 255, 0)          # Green
 
 class FaceMeshDetector:
     def __init__(self, model_path):
+        
         self._load_model(model_path)
         self._setup_detectors()
         self._initialize_tracking_variables()
@@ -53,7 +55,7 @@ class FaceMeshDetector:
         )
         
         # Object detector setup
-        base_options = python.BaseOptions(model_asset_path='model/objek.tflite')
+        base_options = python.BaseOptions(model_asset_path='model/model.tflite')
         options = vision.ObjectDetectorOptions(
             base_options=base_options,
             score_threshold=0.5
@@ -80,6 +82,7 @@ class FaceMeshDetector:
         self.blink_start_time = current_time
         self.last_blink_time = 0
         self.blink_state = False
+        self.alert_sound = pygame.mixer.Sound("assets/farrel.mp3")
 
     @staticmethod
     def calc_aspect_ratio(points):
