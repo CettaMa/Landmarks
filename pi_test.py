@@ -231,7 +231,7 @@ def main():
         processed_frame = detector.process_frame(frame, frame_count, frame_rate, fps)
 
         rgb_frame = cv2.cvtColor(processed_frame, cv2.COLOR_BGR2RGB)
-        mp_image = vision.Image(image_format=vision.ImageFormat.SRGB, data=rgb_frame)
+        mp_image = mp.Image(image_format=vision.ImageFormat.SRGB, data=rgb_frame)
         detection_result = object_detector.detect(mp_image)
         annotated_frame = visualize_objects(processed_frame, detection_result)
 
