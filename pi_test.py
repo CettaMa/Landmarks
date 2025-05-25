@@ -224,7 +224,7 @@ def main():
         processed_frame = detector.process_frame(color_frame, frame_count, 20)
 
         # Process object detection on color frame
-        mp_image = vision.Image(image_format=mp.ImageFormat.SRGB, data=color_frame)
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=color_frame)
         detection_result = object_detector.detect(mp_image)
         
         # Draw object detections in white
