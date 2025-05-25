@@ -11,9 +11,16 @@ import threading
 import pygame
 from picamera2 import Picamera2
 
-# Threaded camera capture for Raspberry Pi Camera Module 2
+def visualize_objects(image, detection_result):
+    for detection in detection_result.detections:
+        bbox = detection.bounding_box
+        start_point = (int(bbox.origin_x), int(bbox.origin_y))
+        end_point = (int(bbox.origin_x + bbox.width), int(bbox.origin_y + bbox.height))
+        cv2.rectangle(image, start_point, end_point, (0, 255, 0), 2)
+    return image
+
 class CameraStream:
-    def __init__(self, width=320, height=240):
+    def __init__(self, width=640, height=360):
         self.picam2 = Picamera2()
         config = self.picam2.create_video_configuration(
             main={"size": (width, height), "format": "XRGB8888"}
@@ -28,7 +35,7 @@ class CameraStream:
     def update(self):
         while not self.stopped:
             frame = self.picam2.capture_array()
-            rgb_frame = frame[:, :, 1:]  # Keep color for processing
+            rgb_frame = frame[:, :, 1:]  # Remove alpha channel, keep RGB
             with self.lock:
                 self.frame = rgb_frame
 
@@ -47,12 +54,11 @@ class FaceMeshDetector:
         self.knn_model = joblib.load(model_path)
         self.mp_face_mesh = mp.solutions.face_mesh
         self.face_mesh = self.mp_face_mesh.FaceMesh(
-            static_image_mode=False,
-            max_num_faces=1,
-            min_detection_confidence=0.5,
-            refine_landmarks=False
+            static_image_mode=False, 
+            max_num_faces=1, 
+            min_detection_confidence=0.5
         )
-        self.STATE_CHANGE_THRESHOLD = 2
+        self.STATE_CHANGE_THRESHOLD = 2  # seconds
         self.state_change_counter = 0
         self.last_state_change_time = time.time()
         self.current_state = 0
@@ -106,18 +112,14 @@ class FaceMeshDetector:
             cv2.putText(frame, text, (10, start_y + i * line_spacing),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
 
-    def process_frame(self, color_frame, frame_count, frame_rate):
+    def process_frame(self, frame, frame_count, frame_rate, fps):
         start_time = time.time()
         timestamp = round(frame_count / frame_rate, 2)
         current_time = time.time()
 
-        # Convert to grayscale for visualization
-        draw_frame = cv2.cvtColor(color_frame, cv2.COLOR_RGB2GRAY)
-        draw_frame = cv2.cvtColor(draw_frame, cv2.COLOR_GRAY2BGR)
-        
-        results = self.face_mesh.process(color_frame)
-        text_color = (255, 255, 255)  # White text
-
+        draw_frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+        results = self.face_mesh.process(frame)
+        text_color = (255, 255, 255)
         img_h, img_w = draw_frame.shape[:2]
 
         if results.multi_face_landmarks:
@@ -174,13 +176,13 @@ class FaceMeshDetector:
                     self.last_state_change_time = current_time
 
                 if self.alert_start_time and (current_time - self.alert_start_time <= 5):
-                    cv2.rectangle(draw_frame, (0, 0), (img_w, 340), (100, 100, 100), -1)  # Dark gray
+                    cv2.rectangle(draw_frame, (0, 0), (img_w, 340), (0, 0, 255), -1)
                     text_color = (255, 255, 255)
                     self.state_change_counter = 0
 
                 for idx in self.head_pose_indices:
                     x, y = int(landmarks[idx][0]), int(landmarks[idx][1])
-                    cv2.circle(draw_frame, (x, y), 2, (200, 200, 200), -1)  # Light gray
+                    cv2.circle(draw_frame, (x, y), 2, (255, 255, 255), -1)
 
                 texts = [
                     f"Time: {timestamp:.2f}s",
@@ -195,6 +197,8 @@ class FaceMeshDetector:
                 ]
                 self.draw_texts(draw_frame, texts, color=text_color)
 
+                cv2.putText(draw_frame, f"FPS: {fps:.1f}", (img_w - 120, 30),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, text_color, 2)
         else:
             cv2.putText(draw_frame, "No face detected", (10, 30),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, text_color, 2)
@@ -204,57 +208,36 @@ class FaceMeshDetector:
 def main():
     model_path = "model/xgb_model.pkl"
     detector = FaceMeshDetector(model_path)
-    cam_stream = CameraStream(width=320, height=240)
-    
-    # Initialize object detector
+    cam_stream = CameraStream(width=640, height=360)
+
     base_options = python.BaseOptions(model_asset_path='model/model.tflite')
     options = vision.ObjectDetectorOptions(base_options=base_options, score_threshold=0.5)
     object_detector = vision.ObjectDetector.create_from_options(options)
 
     frame_count = 0
-    fps_counter = 0
-    fps = 0.0
-    fps_start_time = time.time()
+    frame_rate = 30
+    prev_time = time.time()
 
     while True:
-        color_frame = cam_stream.read()
-        if color_frame is None:
+        frame = cam_stream.read()
+        if frame is None:
             continue
 
-        # Process drowsiness detection
-        processed_frame = detector.process_frame(color_frame, frame_count, 20)
+        curr_time = time.time()
+        fps = 1.0 / (curr_time - prev_time)
+        prev_time = curr_time
+        frame_count += 1
 
-        # Process object detection on color frame
-        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=color_frame)
+        processed_frame = detector.process_frame(frame, frame_count, frame_rate, fps)
+
+        rgb_frame = cv2.cvtColor(processed_frame, cv2.COLOR_BGR2RGB)
+        mp_image = vision.Image(image_format=vision.ImageFormat.SRGB, data=rgb_frame)
         detection_result = object_detector.detect(mp_image)
-        
-        # Draw object detections in white
-        for detection in detection_result.detections:
-            bbox = detection.bounding_box
-            start_point = (bbox.origin_x, bbox.origin_y)
-            end_point = (bbox.origin_x + bbox.width, bbox.origin_y + bbox.height)
-            cv2.rectangle(processed_frame, start_point, end_point, (255, 255, 255), 2)
-            category = detection.categories[0]
-            label = f"{category.category_name} ({category.score:.2f})"
-            cv2.putText(processed_frame, label, (start_point[0], start_point[1]-10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+        annotated_frame = visualize_objects(processed_frame, detection_result)
 
-        # Calculate and display FPS
-        fps_counter += 1
-        current_time = time.time()
-        if (current_time - fps_start_time) >= 1.0:
-            fps = fps_counter / (current_time - fps_start_time)
-            fps_start_time = current_time
-            fps_counter = 0
-        
-        cv2.putText(processed_frame, f"FPS: {fps:.1f}", (10, 30),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
-
-        cv2.imshow("Driver Safety System", processed_frame)
+        cv2.imshow("Driver Safety System", annotated_frame)
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
-
-        frame_count += 1
 
     cam_stream.release()
     cv2.destroyAllWindows()
