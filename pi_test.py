@@ -2,7 +2,7 @@ import numpy as np
 import cv2
 import mediapipe as mp
 from mediapipe.tasks import python
-from mediapipe.tasks import vision
+from mediapipe.tasks.python import vision
 from scipy.spatial import distance
 import math
 import joblib
@@ -48,6 +48,16 @@ class FaceMeshDetector:
     def __init__(self, model_path):
         pygame.mixer.init()
         self.alert_sound = pygame.mixer.Sound("assets/farrel.mp3")  # Load sound file
+        # Object detection sounds
+        self.object_sounds = {
+            "cigarette": pygame.mixer.Sound("assets/rokok.mp3"),
+            "handphone": pygame.mixer.Sound("assets/gadget.mp3"),
+            "makeup": pygame.mixer.Sound("assets/makeup.mp3"),
+            # Add more class-sound mappings as needed
+        }
+        self.object_cooldown = 5  # seconds between alerts for same class
+        self.last_object_alert = {}  # Track last alert time per class
+        
         self.knn_model = joblib.load(model_path)
         # Initialize MediaPipe Object Detector
         base_options = python.BaseOptions(model_asset_path='model/model.tflite')
@@ -122,7 +132,8 @@ class FaceMeshDetector:
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
 
     def detect_objects(self, rgb_frame, output_frame):
-        """Detect objects in the frame."""
+        """Detect objects in the frame and return detected categories."""
+        detected_categories = set()
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
         detection_result = self.object_detector.detect(mp_image)
         
@@ -143,8 +154,10 @@ class FaceMeshDetector:
                 (bbox.origin_x, bbox.origin_y - 10),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, 255, 255, 255, 2
             )
+            
+            detected_categories.add(category.category_name)
         
-        return detection_result
+        return detected_categories
 
     def process_frame(self, frame, frame_count, frame_rate):
         start_time = time.time()
@@ -158,7 +171,16 @@ class FaceMeshDetector:
 
         img_h, img_w = draw_frame.shape[:2]
 
-        detection_result = self.detect_objects(draw_frame, draw_frame)
+        # Detect objects and get categories (pass original RGB frame)
+        detected_categories = self.detect_objects(frame, draw_frame)
+
+        # Handle object alerts
+        for category in detected_categories:
+            if category in self.object_sounds:
+                last_alert = self.last_object_alert.get(category, 0)
+                if current_time - last_alert >= self.object_cooldown:
+                    self.object_sounds[category].play()
+                    self.last_object_alert[category] = current_time
 
         if results.multi_face_landmarks:
             for face_landmarks in results.multi_face_landmarks:
