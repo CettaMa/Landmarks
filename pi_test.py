@@ -1,6 +1,8 @@
 import numpy as np
 import cv2
 import mediapipe as mp
+from mediapipe.tasks import python
+from mediapipe.tasks import vision
 from scipy.spatial import distance
 import math
 import joblib
@@ -47,6 +49,14 @@ class FaceMeshDetector:
         pygame.mixer.init()
         self.alert_sound = pygame.mixer.Sound("assets/farrel.mp3")  # Load sound file
         self.knn_model = joblib.load(model_path)
+        # Initialize MediaPipe Object Detector
+        base_options = python.BaseOptions(model_asset_path='model/model.tflite')
+        options = vision.ObjectDetectorOptions(
+            base_options=base_options,
+            score_threshold=0.5
+        )
+        self.object_detector = vision.ObjectDetector.create_from_options(options)
+
         self.mp_face_mesh = mp.solutions.face_mesh
         self.face_mesh = self.mp_face_mesh.FaceMesh(
             static_image_mode=False, 
@@ -148,7 +158,7 @@ class FaceMeshDetector:
 
         img_h, img_w = draw_frame.shape[:2]
 
-        detection_result = self._detect_objects(draw_frame, draw_frame)
+        detection_result = self.detect_objects(draw_frame, draw_frame)
 
         if results.multi_face_landmarks:
             for face_landmarks in results.multi_face_landmarks:
