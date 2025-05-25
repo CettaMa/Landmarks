@@ -213,6 +213,7 @@ def main():
 
     frame_count = 0
     fps_counter = 0
+    fps = 0.0
     fps_start_time = time.time()
 
     while True:
@@ -240,9 +241,10 @@ def main():
 
         # Calculate and display FPS
         fps_counter += 1
-        if (time.time() - fps_start_time) >= 1.0:
-            fps = fps_counter / (time.time() - fps_start_time)
-            fps_start_time = time.time()
+        current_time = time.time()
+        if (current_time - fps_start_time) >= 1.0:
+            fps = fps_counter / (current_time - fps_start_time)
+            fps_start_time = current_time
             fps_counter = 0
         
         cv2.putText(processed_frame, f"FPS: {fps:.1f}", (10, 30),
