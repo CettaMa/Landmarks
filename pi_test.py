@@ -57,13 +57,14 @@ class FaceMeshDetector:
         }
         self.object_cooldown = 5  # seconds between alerts for same class
         self.last_object_alert = {}  # Track last alert time per class
+        self.object_detection_start = {}  # Track detection start time per class
         
         self.knn_model = joblib.load(model_path)
         # Initialize MediaPipe Object Detector
         base_options = python.BaseOptions(model_asset_path='model/model.tflite')
         options = vision.ObjectDetectorOptions(
             base_options=base_options,
-            score_threshold=0.5
+            score_threshold=0.7
         )
         self.object_detector = vision.ObjectDetector.create_from_options(options)
 
@@ -144,7 +145,7 @@ class FaceMeshDetector:
             end_point = (bbox.origin_x + bbox.width, bbox.origin_y + bbox.height)
             
             # Draw bounding box
-            cv2.rectangle(output_frame, start_point, end_point, 255, 255, 255, 2)
+            cv2.rectangle(output_frame, start_point, end_point, (255, 255, 255), 2)
             
             # Draw label
             category = detection.categories[0]
@@ -152,7 +153,7 @@ class FaceMeshDetector:
             cv2.putText(
                 output_frame, label, 
                 (bbox.origin_x, bbox.origin_y - 10),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.5, 255, 255, 255, 2
+                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2
             )
             
             detected_categories.add(category.category_name)
@@ -174,13 +175,33 @@ class FaceMeshDetector:
         # Detect objects and get categories (pass original RGB frame)
         detected_categories = self.detect_objects(frame, draw_frame)
 
-        # Handle object alerts
-        for category in detected_categories:
-            if category in self.object_sounds:
-                last_alert = self.last_object_alert.get(category, 0)
-                if current_time - last_alert >= self.object_cooldown:
-                    self.object_sounds[category].play()
-                    self.last_object_alert[category] = current_time
+        # Handle object alerts with duration check
+        relevant_categories = [cat for cat in detected_categories if cat in self.object_sounds]
+        
+        # Update detection start times for new detections
+        for category in relevant_categories:
+            if category not in self.object_detection_start:
+                self.object_detection_start[category] = current_time
+        
+        # Check which categories have met the 1-second requirement
+        triggered_categories = []
+        for category in list(self.object_detection_start.keys()):
+            if category in relevant_categories:
+                detection_duration = current_time - self.object_detection_start[category]
+                if detection_duration >= 1.0:
+                    triggered_categories.append(category)
+            else:
+                # Remove category if not currently detected
+                del self.object_detection_start[category]
+        
+        # Process triggered alerts with cooldown
+        for category in triggered_categories:
+            last_alert = self.last_object_alert.get(category, 0)
+            if current_time - last_alert >= self.object_cooldown:
+                self.object_sounds[category].play()
+                self.last_object_alert[category] = current_time
+                # Reset detection start to require another full second for next alert
+                self.object_detection_start[category] = current_time
 
         if results.multi_face_landmarks:
             for face_landmarks in results.multi_face_landmarks:
