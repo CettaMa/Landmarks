@@ -31,7 +31,7 @@ LANDMARK_COLOR = (0, 255, 0)          # Green
 
 class FaceMeshDetector:
     def __init__(self, model_path):
-        
+        pygame.mixer.init()
         self._load_model(model_path)
         self._setup_detectors()
         self._initialize_tracking_variables()
