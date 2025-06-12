@@ -367,7 +367,7 @@ class FaceMeshDetector:
 
 def main():
     """Main function to run the driver monitoring system."""
-    model_path = r"saved_models/XGBoost.pkl"
+    model_path = r"model/svm_model.pkl"
     detector = FaceMeshDetector(model_path)
 
     # Open webcam

@@ -3,7 +3,7 @@ import mediapipe as mp
 import numpy as np
 from scipy.spatial import distance
 import math
-
+import joblib
 
 # Initialize MediaPipe FaceMesh
 mp_face_mesh = mp.solutions.face_mesh
@@ -39,9 +39,10 @@ def pupil_circularity(eye):
     return (4 * math.pi * area) / (perimeter ** 2)
 
 # Load the image
-image_path = r"Landmarks\serious-young-driver-behind-steering-wheel_jpg.png"
+image_path = r"output/WIN_20250610_17_15_46_Pro/before/71.89.jpg"
+# image_path = r"output/WIN_20250610_17_15_46_Pro/before/2.95.jpg"  # Replace with your image path
 frame = cv2.imread(image_path)
-
+model = joblib.load("model/svm_model.pkl")  # Load the trained model
 # Resize frame to 480p
 frame = cv2.resize(frame, (854, 480))
 # Convert the frame to RGB
@@ -75,6 +76,9 @@ if results.multi_face_landmarks:
 
         mar = round((mouth_aspect_ratio(mouth)), 4)
         moe = round((mar / ear), 4)
+        # Prepare the input for the model
+        input_data = np.array([ear, mar, avg_pupil_circularity, moe]).reshape(1, -1)
+        state = model.predict(input_data)[0]
 
         # Draw face landmarks
         for landmark in landmarks:
@@ -85,10 +89,7 @@ if results.multi_face_landmarks:
         cv2.putText(frame, f'MAR: {mar:.2f}', (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
         cv2.putText(frame, f'Pupil Circularity: {avg_pupil_circularity:.2f}', (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
         cv2.putText(frame, f'MOE: {moe:.2f}', (10, 120), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
-
-        # Predict the state
-        state = 1 if moe > 3 else 0
-        cv2.putText(frame, f'State: {"Drowsy" if state ==1 else "Awake"}', (10, 150), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+        cv2.putText(frame, f'State: {"Drowsy" if state == 1 else "Awake"}', (10, 150), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
 else:
     cv2.putText(frame, 'No face detected', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
 

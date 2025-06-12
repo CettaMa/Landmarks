@@ -15,8 +15,8 @@ import matplotlib.pyplot as plt
 
 # Load your dataset
 # Replace 'your_dataset.csv' with the path to your dataset
-data = pd.read_csv("output/flipped_states.csv")  # Replace with your dataset
-X = data.drop(["State","Time"], axis=1)  # Replace 'label' with your target column
+data = pd.read_csv("output/combined_output.csv")  # Replace with your dataset
+X = data.drop(["State","Time","Video"], axis=1)  # Replace 'label' with your target column
 # Encode the target column
 y = data["State"]  # Replace 'State' with your target column
 
