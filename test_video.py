@@ -100,12 +100,14 @@ class FaceMeshDetector:
     def pupil_circularity(eye):
         """Calculate the Pupil Circularity."""
         # Calculate perimeter of eye
-        perimeter = (
-            distance.euclidean(eye[0][0], eye[1][0])
-            + distance.euclidean(eye[1][0], eye[2][0])
-            + distance.euclidean(eye[2][0], eye[3][0])
-            + distance.euclidean(eye[3][0], eye[0][1])
-        )
+        perimeter = (distance.euclidean(eye[0][0], eye[1][0]) +
+                     distance.euclidean(eye[1][0], eye[2][0]) +
+                     distance.euclidean(eye[2][0], eye[3][0]) +
+                     distance.euclidean(eye[3][0], eye[0][1]) +
+                     distance.euclidean(eye[0][1], eye[3][1]) +
+                     distance.euclidean(eye[3][1], eye[2][1]) +
+                     distance.euclidean(eye[2][1], eye[1][1]) +
+                     distance.euclidean(eye[1][1], eye[0][0]))
         # Calculate area assuming elliptical shape
         radius = distance.euclidean(eye[1][0], eye[3][1]) * 0.5
         area = math.pi * (radius ** 2)
@@ -326,7 +328,7 @@ class FaceMeshDetector:
                 
                 # Display metrics and state information
                 self._display_metrics(
-                    output_frame, timestamp, ear, mar, moe, head_text, 
+                    output_frame, timestamp, ear, mar, pupil, moe, head_text, 
                     state, x, y, blink_rate, text_color
                 )
         else:
@@ -344,7 +346,7 @@ class FaceMeshDetector:
         
         return output_frame
 
-    def _display_metrics(self, frame, timestamp, ear, mar, moe, head_text, 
+    def _display_metrics(self, frame, timestamp, ear, mar, pupil, moe, head_text, 
                         state, x, y, blink_rate, text_color):
         """Display all metrics and state information on the frame."""
         metrics = [
@@ -358,7 +360,8 @@ class FaceMeshDetector:
             (f"X: {round(x,3)} Y: {round(y,3)}", 240),
             (f"FPS: {self.fps_counter / max(0.001, time.time() - self.fps_start_time):.2f}", 270),
             (f"Blink Rate: {blink_rate:.2f} BPM", 300),
-            (f"Blink Count: {self.blink_counter}", 330)
+            (f"Blink Count: {self.blink_counter}", 330),
+            (f"pupil: {round(pupil, 4)}", 360),
         ]
         
         for text, y_pos in metrics:
