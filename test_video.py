@@ -55,10 +55,10 @@ class FaceMeshDetector:
         )
         
         # Object detector setup
-        base_options = python.BaseOptions(model_asset_path='model/model.tflite')
+        base_options = python.BaseOptions(model_asset_path='model/model (5).tflite')
         options = vision.ObjectDetectorOptions(
             base_options=base_options,
-            score_threshold=0.5
+            score_threshold=0.6
         )
         self.object_detector = vision.ObjectDetector.create_from_options(options)
         

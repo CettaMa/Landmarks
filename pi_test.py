@@ -101,12 +101,19 @@ class FaceMeshDetector:
         N3 = distance.euclidean(mouth[3][0], mouth[3][1])
         D = distance.euclidean(mouth[0][0], mouth[0][1])
         return (N1 + N2 + N3) / (3 * D) if D != 0 else 0
-
-    def pupil_circularity(self, eye):
+    # 0 [[33, 133], 
+    # 1 [160, 144], 
+    # 2 [159, 145], 
+    # 3 [158, 153]]
+    def pupil_circularity(self, eye): 
         perimeter = (distance.euclidean(eye[0][0], eye[1][0]) +
                      distance.euclidean(eye[1][0], eye[2][0]) +
                      distance.euclidean(eye[2][0], eye[3][0]) +
-                     distance.euclidean(eye[3][0], eye[0][1]))
+                     distance.euclidean(eye[3][0], eye[0][1]) +
+                     distance.euclidean(eye[0][1], eye[3][1]) +
+                     distance.euclidean(eye[3][1], eye[2][1]) +
+                     distance.euclidean(eye[2][1], eye[1][1]) +
+                     distance.euclidean(eye[1][1], eye[0][0]))
         diameter = distance.euclidean(eye[1][0], eye[3][1])
         area = math.pi * ((diameter * 0.5) ** 2)
         return (4 * math.pi * area) / (perimeter**2) if perimeter != 0 else 0
