@@ -55,7 +55,7 @@ class FaceMeshDetector:
         )
         
         # Object detector setup
-        base_options = python.BaseOptions(model_asset_path='model/model.tflite')
+        base_options = python.BaseOptions(model_asset_path='model/model (6).tflite')
         options = vision.ObjectDetectorOptions(
             base_options=base_options,
             score_threshold=0.5
@@ -71,7 +71,6 @@ class FaceMeshDetector:
     def _initialize_tracking_variables(self):
         """Initialize performance and state tracking variables."""
         current_time = time.time()
-        self.inference_times = []
         self.state_change_counter = 0
         self.last_state_change_time = current_time
         self.current_state = None
@@ -101,10 +100,16 @@ class FaceMeshDetector:
         """Calculate the Pupil Circularity."""
         # Calculate perimeter of eye
         perimeter = (
-            distance.euclidean(eye[0][0], eye[1][0])
-            + distance.euclidean(eye[1][0], eye[2][0])
-            + distance.euclidean(eye[2][0], eye[3][0])
-            + distance.euclidean(eye[3][0], eye[0][1])
+            (
+            distance.euclidean(eye[0][0], eye[1][0])+
+            distance.euclidean(eye[1][0], eye[2][0])+
+            distance.euclidean(eye[2][0], eye[3][0])+
+            distance.euclidean(eye[3][0], eye[0][1])+
+            distance.euclidean(eye[0][1], eye[3][1])+
+            distance.euclidean(eye[3][1], eye[2][1])+
+            distance.euclidean(eye[2][1], eye[1][1])+
+            distance.euclidean(eye[1][1], eye[0][0])
+        )
         )
         # Calculate area assuming elliptical shape
         radius = distance.euclidean(eye[1][0], eye[3][1]) * 0.5
@@ -340,7 +345,7 @@ class FaceMeshDetector:
         
         # Track inference time
         inference_time = time.time() - start_time
-        self.inference_times.append(inference_time)
+        print(f"Inference Time: {inference_time:.4f} seconds")
         
         return output_frame
 
@@ -367,7 +372,7 @@ class FaceMeshDetector:
 
 def main():
     """Main function to run the driver monitoring system."""
-    model_path = r"model/svm_model.pkl"
+    model_path = r"model/xgboost_model.pkl"
     detector = FaceMeshDetector(model_path)
 
     # Open webcam

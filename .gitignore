@@ -10,3 +10,9 @@ tempCodeRunnerFile.py
 /saved_models
 /confusion_matrices
 model_comparison.csv
+model/decision_tree_model.pkl
+model/HYMSyolov11_float32.tflite
+model/knn_model.pkl
+model/random_forest_model.pkl
+model/svm_model.pkl
+model/xgboost_model.pkl
