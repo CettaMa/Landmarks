@@ -55,6 +55,7 @@ class FaceMeshDetector:
             "cigarette": pygame.mixer.Sound("assets/rokok.mp3"),
             "handphone": pygame.mixer.Sound("assets/gadget.mp3"),
             "makeup": pygame.mixer.Sound("assets/makeup.mp3"),
+            "yawning": pygame.mixer.Sound("assets/alerts.mp3"),
             # Add more class-sound mappings as needed
         }
         self.object_cooldown = 5  # seconds between alerts for same class
