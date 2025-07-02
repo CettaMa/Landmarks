@@ -58,7 +58,7 @@ class FaceMeshDetector:
         base_options = python.BaseOptions(model_asset_path='model/model (6).tflite')
         options = vision.ObjectDetectorOptions(
             base_options=base_options,
-            score_threshold=0.5
+            score_threshold=0.6
         )
         self.object_detector = vision.ObjectDetector.create_from_options(options)
         
@@ -331,7 +331,7 @@ class FaceMeshDetector:
                 
                 # Display metrics and state information
                 self._display_metrics(
-                    output_frame, timestamp, ear, mar, moe, head_text, 
+                    output_frame, timestamp, ear, mar, pupil, moe, head_text, 
                     state, x, y, blink_rate, text_color
                 )
         else:
@@ -349,7 +349,7 @@ class FaceMeshDetector:
         
         return output_frame
 
-    def _display_metrics(self, frame, timestamp, ear, mar, moe, head_text, 
+    def _display_metrics(self, frame, timestamp, ear, mar, pupil, moe, head_text, 
                         state, x, y, blink_rate, text_color):
         """Display all metrics and state information on the frame."""
         metrics = [
@@ -363,7 +363,8 @@ class FaceMeshDetector:
             (f"X: {round(x,3)} Y: {round(y,3)}", 240),
             (f"FPS: {self.fps_counter / max(0.001, time.time() - self.fps_start_time):.2f}", 270),
             (f"Blink Rate: {blink_rate:.2f} BPM", 300),
-            (f"Blink Count: {self.blink_counter}", 330)
+            (f"Blink Count: {self.blink_counter}", 330),
+            (f"pupil: {round(pupil, 4)}", 360),
         ]
         
         for text, y_pos in metrics:
