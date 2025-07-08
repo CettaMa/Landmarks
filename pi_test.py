@@ -57,22 +57,25 @@ class FaceMeshDetector:
         }
         self.object_cooldown = 5  # seconds between alerts for same class
         self.last_object_alert = {}  # Track last alert time per class
-        
+
         self.knn_model = joblib.load(model_path)
         # Initialize MediaPipe Object Detector
+<<<<<<< HEAD
         base_options = python.BaseOptions(model_asset_path='model\model (5).tflite')
+=======
+        base_options = python.BaseOptions(model_asset_path="model/model.tflite")
+>>>>>>> df26fea44abd71965203d6d9ac29b217b1f3b935
         options = vision.ObjectDetectorOptions(
-            base_options=base_options,
-            score_threshold=0.7
+            base_options=base_options, score_threshold=0.7
         )
         self.object_detector = vision.ObjectDetector.create_from_options(options)
 
         self.mp_face_mesh = mp.solutions.face_mesh
         self.face_mesh = self.mp_face_mesh.FaceMesh(
-            static_image_mode=False, 
-            max_num_faces=1, 
-            min_detection_confidence=0.5, 
-            refine_landmarks=False  # Disabled refined landmarks
+            static_image_mode=False,
+            max_num_faces=1,
+            min_detection_confidence=0.5,
+            refine_landmarks=False,  # Disabled refined landmarks
         )
         self.inference_times = []
         self.STATE_CHANGE_THRESHOLD = 2  # seconds
@@ -83,8 +86,12 @@ class FaceMeshDetector:
         self.fps_start_time = time.time()
         self.fps_counter = 0
 
-        self.right_eye_indices = np.array([[33, 133], [160, 144], [159, 145], [158, 153]])
-        self.left_eye_indices = np.array([[263, 362], [387, 373], [386, 374], [385, 380]])
+        self.right_eye_indices = np.array(
+            [[33, 133], [160, 144], [159, 145], [158, 153]]
+        )
+        self.left_eye_indices = np.array(
+            [[263, 362], [387, 373], [386, 374], [385, 380]]
+        )
         self.mouth_indices = np.array([[61, 291], [39, 181], [0, 17], [269, 405]])
         self.head_pose_indices = [1, 33, 263, 61, 291, 199]
 
@@ -103,10 +110,16 @@ class FaceMeshDetector:
         return (N1 + N2 + N3) / (3 * D) if D != 0 else 0
 
     def pupil_circularity(self, eye):
-        perimeter = (distance.euclidean(eye[0][0], eye[1][0]) +
-                     distance.euclidean(eye[1][0], eye[2][0]) +
-                     distance.euclidean(eye[2][0], eye[3][0]) +
-                     distance.euclidean(eye[3][0], eye[0][1]))
+        perimeter = (
+            distance.euclidean(eye[0][0], eye[1][0]),
+            distance.euclidean(eye[1][0], eye[2][0]),
+            distance.euclidean(eye[2][0], eye[3][0]),
+            distance.euclidean(eye[3][0], eye[0][1]),
+            distance.euclidean(eye[0][1], eye[3][1]),
+            distance.euclidean(eye[3][1], eye[2][1]),
+            distance.euclidean(eye[2][1], eye[1][1]),
+            distance.euclidean(eye[1][1], eye[0][0])
+        )
         diameter = distance.euclidean(eye[1][0], eye[3][1])
         area = math.pi * ((diameter * 0.5) ** 2)
         return (4 * math.pi * area) / (perimeter**2) if perimeter != 0 else 0
@@ -114,9 +127,7 @@ class FaceMeshDetector:
     def head_pose(self, face_2d, face_3d, img_w, img_h):
         focal_length = img_w
         cam_matrix = np.array(
-            [[focal_length, 0, img_w / 2],
-             [0, focal_length, img_h / 2],
-             [0, 0, 1]]
+            [[focal_length, 0, img_w / 2], [0, focal_length, img_h / 2], [0, 0, 1]]
         )
         distortion_matrix = np.zeros((4, 1), dtype=np.float64)
         success, rotation_vec, translation_vec = cv2.solvePnP(
@@ -126,37 +137,52 @@ class FaceMeshDetector:
         angles, _, _, _, _, _ = cv2.RQDecomp3x3(rmat)
         return angles
 
-    def draw_texts(self, frame, texts, start_y=20, line_spacing=25, color=(255, 255, 255)):  # White text
+    def draw_texts(
+        self, frame, texts, start_y=20, line_spacing=25, color=(255, 255, 255)
+    ):  # White text
         for i, text in enumerate(texts):
-            cv2.putText(frame, text, (10, start_y + i * line_spacing),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+            cv2.putText(
+                frame,
+                text,
+                (10, start_y + i * line_spacing),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                color,
+                2,
+            )
 
     def detect_objects(self, rgb_frame, output_frame):
         """Detect objects in the frame and return detected categories."""
         detected_categories = set()
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
         detection_result = self.object_detector.detect(mp_image)
-        
+
         # Draw detection results
         for detection in detection_result.detections:
             bbox = detection.bounding_box
             start_point = (bbox.origin_x, bbox.origin_y)
             end_point = (bbox.origin_x + bbox.width, bbox.origin_y + bbox.height)
-            
+
             # Draw bounding box
             cv2.rectangle(output_frame, start_point, end_point, 255, 255, 255, 2)
-            
+
             # Draw label
             category = detection.categories[0]
             label = f"{category.category_name}: {round(category.score, 2)}"
             cv2.putText(
-                output_frame, label, 
+                output_frame,
+                label,
                 (bbox.origin_x, bbox.origin_y - 10),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.5, 255, 255, 255, 2
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                255,
+                255,
+                255,
+                2,
             )
-            
+
             detected_categories.add(category.category_name)
-        
+
         return detected_categories
 
     def process_frame(self, frame, frame_count, frame_rate):
@@ -184,7 +210,9 @@ class FaceMeshDetector:
 
         if results.multi_face_landmarks:
             for face_landmarks in results.multi_face_landmarks:
-                landmarks = np.array([[lm.x * img_w, lm.y * img_h] for lm in face_landmarks.landmark])
+                landmarks = np.array(
+                    [[lm.x * img_w, lm.y * img_h] for lm in face_landmarks.landmark]
+                )
 
                 right_ear = self.eye_aspect_ratio(landmarks[self.right_eye_indices])
                 left_ear = self.eye_aspect_ratio(landmarks[self.left_eye_indices])
@@ -206,7 +234,9 @@ class FaceMeshDetector:
                 face_2d = np.array(face_2d, dtype=np.float64)
                 face_3d = np.array(face_3d, dtype=np.float64)
                 angles = self.head_pose(face_2d, face_3d, img_w, img_h)
-                x_angle, y_angle, z_angle = [angle * (180 / math.pi) for angle in angles]
+                x_angle, y_angle, z_angle = [
+                    angle * (180 / math.pi) for angle in angles
+                ]
 
                 if y_angle < -15:
                     head_text = "Menoleh Kanan"
@@ -219,13 +249,18 @@ class FaceMeshDetector:
                 else:
                     head_text = "Kedepan"
 
-                input_data = np.array([ear, mar, avg_pupil_circularity, moe]).reshape(1, -1)
+                input_data = np.array([ear, mar, avg_pupil_circularity, moe]).reshape(
+                    1, -1
+                )
                 state = self.knn_model.predict(input_data)[0]
 
                 # State management logic remains unchanged
                 if self.current_state is None or state != self.current_state:
                     # Transition to drowsy state (1)
-                    if state == 1 and (current_time - self.last_state_change_time > self.STATE_CHANGE_THRESHOLD):
+                    if state == 1 and (
+                        current_time - self.last_state_change_time
+                        > self.STATE_CHANGE_THRESHOLD
+                    ):
                         self.state_change_counter += 1
                         self.current_state = state
                         self.last_state_change_time = current_time
@@ -241,8 +276,12 @@ class FaceMeshDetector:
                     self.last_state_change_time = current_time
 
                 # Alert visualization
-                if self.alert_start_time and (current_time - self.alert_start_time <= 5):
-                    cv2.rectangle(draw_frame, (0, 0), (img_w, 340), (0, 0, 255), -1)  # Red background
+                if self.alert_start_time and (
+                    current_time - self.alert_start_time <= 5
+                ):
+                    cv2.rectangle(
+                        draw_frame, (0, 0), (img_w, 340), (0, 0, 255), -1
+                    )  # Red background
                     text_color = (255, 255, 255)  # White text
                     self.state_change_counter = 0
 
@@ -260,17 +299,26 @@ class FaceMeshDetector:
                     f"Dir: {head_text}",
                     f"x: {x_angle:.1f}, y: {y_angle:.1f}, z: {z_angle:.1f}",
                     f"State: {state}",
-                    f"State Changes: {self.state_change_counter}"
+                    f"State Changes: {self.state_change_counter}",
                 ]
                 self.draw_texts(draw_frame, texts, color=text_color)
 
         else:
-            cv2.putText(draw_frame, "No face detected", (10, 30),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, text_color, 2)
+            cv2.putText(
+                draw_frame,
+                "No face detected",
+                (10, 30),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                text_color,
+                2,
+            )
 
         # Convert to grayscale for final display
         draw_frame = cv2.cvtColor(draw_frame, cv2.COLOR_BGR2GRAY)
-        draw_frame = cv2.cvtColor(draw_frame, cv2.COLOR_GRAY2BGR)  # Maintain 3 channels for display
+        draw_frame = cv2.cvtColor(
+            draw_frame, cv2.COLOR_GRAY2BGR
+        )  # Maintain 3 channels for display
 
         # FPS calculation
         self.fps_counter += 1
@@ -278,8 +326,15 @@ class FaceMeshDetector:
             fps = self.fps_counter / (time.time() - self.fps_start_time)
             self.fps_start_time = time.time()
             self.fps_counter = 0
-            cv2.putText(draw_frame, f"FPS: {fps:.1f}", (img_w - 120, 30),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, text_color, 2)
+            cv2.putText(
+                draw_frame,
+                f"FPS: {fps:.1f}",
+                (img_w - 120, 30),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                text_color,
+                2,
+            )
 
         inference_time = time.time() - start_time
         self.inference_times.append(inference_time)
