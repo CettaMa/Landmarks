@@ -60,7 +60,7 @@ class FaceMeshDetector:
         
         self.knn_model = joblib.load(model_path)
         # Initialize MediaPipe Object Detector
-        base_options = python.BaseOptions(model_asset_path='model/model.tflite')
+        base_options = python.BaseOptions(model_asset_path='model\model (5).tflite')
         options = vision.ObjectDetectorOptions(
             base_options=base_options,
             score_threshold=0.7
